@@ -1,0 +1,215 @@
+---
+title: "PracticalML"
+output: html_document
+---
+
+
+## LOAD LIBRARY & DATA SET
+
+```{r cars}
+library(caret)
+library(rattle)
+
+TrainData <- read.csv(url("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"),header=TRUE)
+dim(TrainData)
+
+
+TestData <- read.csv(url("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"),header=TRUE)
+dim(TestData)
+
+
+
+
+```
+
+## Indexes of the columns having at least 90% of NA or blank for Train data
+
+```{r train_clean}
+
+indColToRemove <- which(colSums(is.na(TrainData) |TrainData=="")>0.9*dim(TrainData)[1]) 
+TrainDataClean <- TrainData[,-indColToRemove]
+TrainDataClean <- TrainDataClean[,-c(1:7)]
+dim(TrainDataClean)
+
+```
+
+## for test data
+
+
+```{r test_clean}
+
+
+indColToRemove <- which(colSums(is.na(TestData) |TestData=="")>0.9*dim(TestData)[1]) 
+TestDataClean <- TestData[,-indColToRemove]
+TestDataClean <- TestDataClean[,-1]
+dim(TestDataClean)
+
+```
+
+
+## partition train data
+
+```{r partition}
+
+set.seed(12345)
+inTrain1 <- createDataPartition(TrainDataClean$classe, p=0.75, list=FALSE)
+Train1 <- TrainDataClean[inTrain1,]
+Test1 <- TrainDataClean[-inTrain1,]
+dim(Train1)
+
+```
+
+
+
+## train tree
+
+```{r model}
+
+trControl <- trainControl(method="cv", number=5)
+model_CT <- train(classe~., data=Train1, method="rpart", trControl=trControl)
+```
+
+
+## print(model_CT)
+
+```{r tree}
+
+fancyRpartPlot(model_CT$finalModel)
+
+```
+
+
+## Confusion matrix
+```{r pred11}
+
+trainpred <- predict(model_CT,newdata=Test1)
+
+confMatCT <- confusionMatrix(Test1$classe,trainpred)
+
+confMatCT$table
+
+
+```
+
+## Confusion matrix
+```{r pred22}
+
+confMatCT$overall[1]
+
+
+```
+
+
+
+## RF
+```{r model_rf}
+
+model_RF <- train(classe~., data=Train1, method="rf", trControl=trControl, verbose=FALSE)
+
+print(model_RF)
+
+
+
+
+```
+```{r model_rff22}
+
+plot(model_RF,main="Accuracy of RF model by predictors")
+
+
+
+
+```
+
+```{r model_rff}
+
+trainpred <- predict(model_RF,newdata=Test1)
+
+confMatRF <- confusionMatrix(Test1$classe,trainpred)
+
+confMatRF$table
+
+
+```
+
+## RF - CF
+```{r cf}
+
+confMatRF$overall[1]
+```
+
+```{r cf1}
+
+names(model_RF$finalModel)
+```
+
+```{r cf2}
+
+model_RF$finalModel$classes
+
+```
+
+
+```{r cf3}
+
+plot(model_RF$finalModel,main="Model error of RF model by number of trees")
+
+```
+
+
+
+## Variable importance
+
+```{r varimp}
+
+variableimp <- varImp(model_RF)
+variableimp
+
+```
+
+
+# GBM
+
+```{r gbm}
+
+model_GBM <- train(classe~., data=Train1, method="gbm", trControl=trControl, verbose=FALSE)
+
+print(model_GBM)
+
+```
+
+
+```{r gbm2}
+
+plot(model_GBM)
+
+
+```
+
+
+```{r gbm3}
+
+trainpred <- predict(model_GBM,newdata=Test1)
+
+confMatGBM <- confusionMatrix(Test1$classe,trainpred)
+confMatGBM$table
+
+```
+
+
+```{r gbm4}
+
+confMatGBM$overall[1]
+
+
+```
+
+
+## This shows that the random forest model is the best one. We will then use it to predict the values of classe for the test data set.
+
+```{r gbm5}
+
+FinalTestPred <- predict(model_RF,newdata=TestDataClean)
+FinalTestPred
+
+```
